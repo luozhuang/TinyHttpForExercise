@@ -32,7 +32,7 @@ void HttpClient::Connect(const char *addr, int remote_port)
 
     cout<<"connect to server success!"<<endl;
 
-    int ret = -1;
+    int ret;
     do {
         memset(m_buffer, 0, BUFSIZE);
         ret = read(0, m_buffer, BUFSIZE);
@@ -40,7 +40,7 @@ void HttpClient::Connect(const char *addr, int remote_port)
 
             perror("input data error!");
             exit(EXIT_FAILURE);
-        } else if (ret == 0) {
+        } if (ret == 0) {
             cout<<"No data need transmit!"<<endl;
             break;
         }
@@ -61,6 +61,7 @@ void HttpClient::Connect(const char *addr, int remote_port)
         }
     } while (ret != 0);
     cout<<"End client connection!"<<endl;
+    sleep(2);
     close(m_socketfd);
 }
 

@@ -1,6 +1,7 @@
 #include "myserver.h"
 #include <sys/select.h>
 #include <sys/time.h>
+#include <fcntl.h>
 #include <cmath>
 
 void HttpServer::Start(int port)
@@ -9,6 +10,7 @@ void HttpServer::Start(int port)
     m_listenfd = socket(AF_INET, SOCK_STREAM, 0);
     if (m_listenfd == -1) {
     }
+
 
     struct sockaddr_in server_addr;
 
@@ -19,6 +21,7 @@ void HttpServer::Start(int port)
     if (bind(m_listenfd, (struct sockaddr*)(&server_addr), sizeof(struct sockaddr_in)) == -1) {
         //    ERROR_EXIT("bind addr failure!");
     }
+
 
     if (listen(m_listenfd, DEFU_BACKLOG) == -1) {
         ERROR_EXIT("bind addr failure!");
@@ -64,7 +67,7 @@ void HttpServer::Echo_Select()
                     }
                     cout<<clientfd<<" connect to client success!"<<endl;
                     m_fdsetdata.client_fds.push_back(clientfd);
-                    m_fdsetdata.maxfd_index = m_fdsetdata.client_fds[m_fdsetdata.maxfd_index] > clientfd ? m_fdsetdata.maxfd_index:m_fdsetdata.client_fds.size() - 1;
+                    m_fdsetdata.maxfd_index = m_fdsetdata.client_fds[m_fdsetdata.maxfd_index] > clientfd ? m_fdsetdata.maxfd_index:(m_fdsetdata.client_fds.size() - 1);
                     FD_SET(clientfd, &m_fdsetdata.readfds);
                 } else if (FD_ISSET(m_fdsetdata.client_fds[i], &m_fdsetdata.readyfds)){
                     Echo(m_fdsetdata.client_fds[i]);
@@ -88,27 +91,23 @@ void HttpServer::Echo(int clientfd)
 {
     memset(m_buffer, 0, BUFSIZE);
 
-    int ret;
-    while ((ret = read(clientfd, m_buffer, BUFSIZE - 1))) {
-        if (ret != -1) {
-            if (ret == 0) {
-                cout<<"client disconnect!"<<endl;
-                FD_CLR(clientfd, &m_fdsetdata.readfds);
-                RemoveValue(m_fdsetdata.maxfd_index, m_fdsetdata.client_fds);
-                close(clientfd);
-                break;
-            } else {
-                cout<<m_buffer;
-                ret = write(clientfd, m_buffer, BUFSIZE);
-                if (ret == -1) {
-                    ERROR_EXIT("write data section to client error!");
-                }
-                memset(m_buffer, 0 , BUFSIZE);
+    int ret = read(clientfd, m_buffer, BUFSIZE - 1);
+    if (ret != -1) {
+        if (ret == 0) {
+            cout<<"client disconnect!"<<endl;
+            FD_CLR(clientfd, &m_fdsetdata.readfds);
+            RemoveValue(m_fdsetdata.maxfd_index, m_fdsetdata.client_fds);
+            close(clientfd);
+        } else {
+            cout<<m_buffer;
+            ret = write(clientfd, m_buffer, BUFSIZE);
+            if (ret == -1) {
+                ERROR_EXIT("write data section to client error!");
             }
         }
-        else {
-            ERROR_EXIT("read data section from client error!");
-        }
+    }
+    else {
+        ERROR_EXIT("read data section from client error!");
     }
 }
 
