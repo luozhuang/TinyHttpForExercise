@@ -35,7 +35,7 @@ void HttpClient::Connect(const char *addr, int remote_port)
     int ret;
     do {
         memset(m_buffer, 0, BUFSIZE);
-        ret = read(0, m_buffer, BUFSIZE);
+        ret = read(0, m_buffer, BUFSIZE - 1);
         if (ret == -1) {
 
             perror("input data error!");
@@ -45,7 +45,7 @@ void HttpClient::Connect(const char *addr, int remote_port)
             break;
         }
 
-        ret = write(m_socketfd, m_buffer, BUFSIZE);
+        ret = write(m_socketfd, m_buffer, strlen(m_buffer));
         if (ret == -1) {
             perror("send data section to server error!");
             exit(EXIT_FAILURE);
@@ -61,7 +61,7 @@ void HttpClient::Connect(const char *addr, int remote_port)
         }
     } while (ret != 0);
     cout<<"End client connection!"<<endl;
-    sleep(2);
+    sleep(5);
     close(m_socketfd);
 }
 

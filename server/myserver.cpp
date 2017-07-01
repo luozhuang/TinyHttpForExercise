@@ -12,6 +12,9 @@ void HttpServer::Start(int port)
     }
 
 
+    int on = 1;
+    setsockopt(m_listenfd, SOL_SOCKET, SO_REUSEADDR, &on, sizeof(on));
+
     struct sockaddr_in server_addr;
 
     server_addr.sin_family = AF_INET;
@@ -39,7 +42,7 @@ void HttpServer::Start(int port)
 void HttpServer::Echo_Select()
 {
     struct sockaddr_in client_addr;
-    socklen_t clientaddr_len;
+    socklen_t clientaddr_len = sizeof(struct sockaddr_in);
 
     struct timeval tv;
     tv.tv_sec = 5;
@@ -100,7 +103,7 @@ void HttpServer::Echo(int clientfd)
             close(clientfd);
         } else {
             cout<<m_buffer;
-            ret = write(clientfd, m_buffer, BUFSIZE);
+            ret = write(clientfd, m_buffer, strlen(m_buffer));
             if (ret == -1) {
                 ERROR_EXIT("write data section to client error!");
             }
