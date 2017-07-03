@@ -2,7 +2,9 @@
 #include <sys/select.h>
 #include <sys/time.h>
 #include <fcntl.h>
+#include <sys/epoll.h>
 #include <cmath>
+#define EPOLL_EVENTNUM 50
 
 void HttpServer::Start(int port)
 {
@@ -35,9 +37,17 @@ void HttpServer::Start(int port)
     //1.
     //Echo_Select();
     //2.
-    Echo_Poll();
+    //Echo_Poll();
     //3.
-    //Echo_Epoll();
+    Echo_Epoll();
+}
+
+int HttpServer::SetFdNonBlock(int fd)
+{
+    int old_option = fcntl(fd, F_GETFL);
+    int new_option = old_option | O_NONBLOCK;
+    fcntl(fd, F_SETFL, new_option);
+    return old_option;
 }
 
 void HttpServer::Echo_Select()
@@ -120,10 +130,56 @@ void HttpServer::Echo_Poll()
     }
 }
 
+
+
 void HttpServer::Echo_Epoll()
 {
+    cout<<"epoll implement..."<<endl;
 
-    cout<<"epoll implement";
+    struct sockaddr_in clientaddr;
+    socklen_t addr_len = sizeof(struct sockaddr_in);
+
+    struct epoll_event ev, events[EPOLL_EVENTNUM];
+    int epollfd;
+    epollfd = epoll_create(EPOLL_EVENTNUM);
+
+    if (epollfd < 0) {
+        ERROR_EXIT("init epoll failure");
+    }
+
+    ev.data.fd = m_listenfd;
+    ev.events = EPOLLIN;
+    if (epoll_ctl(epollfd, EPOLL_CTL_ADD, m_listenfd, &ev) == -1) {
+        ERROR_EXIT("fail to add event");
+    }
+
+    while (1) {
+        int ret = epoll_wait(epollfd, (struct epoll_event*)events, EPOLL_EVENTNUM, -1);
+        if (ret < 0) {
+            ERROR_EXIT("wait ready events failure!");
+        } else if (ret > 0) {
+            for (int i = 0; i < ret; ++i) {
+                if (events[i].events & EPOLLIN) {
+                    if (events[i].data.fd == m_listenfd) {
+                        int clientfd = accept(m_listenfd, (struct sockaddr*)(&clientaddr), &addr_len);
+                        if (clientfd < 0) {
+                            ERROR_EXIT("accept client connection fail");
+                        }
+
+                        SetFdNonBlock(clientfd);
+                        ev.data.fd = clientfd;
+                        ev.events = EPOLLIN | EPOLLET;
+                        if (epoll_ctl(epollfd, EPOLL_CTL_ADD, clientfd, &ev) == -1) {
+                            ERROR_EXIT("epoll_ctl: add client EPOLLIN event failure!");
+                        }
+                    } else {
+                        Echo(events[i].data.fd, MULTIP_EPOLL);
+                    }
+                }
+            }
+        }
+    }
+
 }
 
 void HttpServer::FdCloseProcess(int fd, int flag)
@@ -143,12 +199,14 @@ void HttpServer::FdCloseProcess(int fd, int flag)
                               break;
                           }
         case MULTIP_EPOLL: {
-
+                               epoll_ctl(epollfd, EPOLL_CTL_DEL, fd, NULL);
+                               break;
                            }
         default:break;
     }
     close(fd);
 }
+
 void HttpServer::Echo(int clientfd, int flag)
 {
     memset(m_buffer, 0, BUFSIZE);

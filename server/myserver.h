@@ -46,10 +46,11 @@ public:
     void Echo_Select();
     void Echo_Poll();
     void Echo_Epoll();
-
-    void Echo(int client, int flag);
-    void RemoveValue(int& index, vector<int>& client);
     void FdCloseProcess(int fd, int flag);
+    int SetFdNonBlock(int fd);
+private:
+    void RemoveValue(int& index, vector<int>& client);
+    void Echo(int client, int flag);
 private:
     int m_listenfd;
     char m_buffer[BUFSIZE];
@@ -63,7 +64,10 @@ private:
     } SelectData;
     SelectData m_fdsetdata;
 
-    //echo implement for poll
+    //echo implement in poll
     vector<pollfd> event_queue;
+
+    //echo implement in epoll
+    int epollfd;
 };
 #endif
