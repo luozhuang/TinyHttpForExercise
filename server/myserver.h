@@ -12,8 +12,8 @@
 #include <cstring>
 using namespace std;
 #define DEFU_SERPORT 30023
-#define DEFU_BACKLOG 5
-#define BUFSIZE 1024
+#define DEFU_BACKLOG 10
+#define BUFSIZE  1024
 
 #define ERROR_EXIT(x) \
     do { \

@@ -3,8 +3,9 @@
 #include <sys/time.h>
 #include <fcntl.h>
 #include <sys/epoll.h>
+#include <errno.h>
 #include <cmath>
-#define EPOLL_EVENTNUM 50
+#define EPOLL_EVENTNUM 1024
 
 void HttpServer::Start(int port)
 {
@@ -166,12 +167,12 @@ void HttpServer::Echo_Epoll()
                             ERROR_EXIT("accept client connection fail");
                         }
 
-                        SetFdNonBlock(clientfd);
                         ev.data.fd = clientfd;
                         ev.events = EPOLLIN | EPOLLET;
                         if (epoll_ctl(epollfd, EPOLL_CTL_ADD, clientfd, &ev) == -1) {
                             ERROR_EXIT("epoll_ctl: add client EPOLLIN event failure!");
                         }
+                        SetFdNonBlock(clientfd);
                     } else {
                         Echo(events[i].data.fd, MULTIP_EPOLL);
                     }
@@ -215,16 +216,33 @@ void HttpServer::Echo(int clientfd, int flag)
     if (ret != -1) {
         if (ret == 0) {
             cout<<"client disconnect!"<<endl;
-            //FD_CLR(clientfd, &m_fdsetdata.readfds);
-            //RemoveValue(m_fdsetdata.maxfd_index, m_fdsetdata.client_fds);
 
             FdCloseProcess(clientfd, flag);
-            //close(clientfd);
         } else {
             cout<<m_buffer;
             ret = write(clientfd, m_buffer, strlen(m_buffer));
             if (ret == -1) {
                 ERROR_EXIT("write data section to client error!");
+            }
+
+            if (flag == MULTIP_EPOLL) {
+                while (1) {
+                    memset(m_buffer, 0, BUFSIZE);
+                    ret = read(clientfd, m_buffer, BUFSIZE - 1);
+                    if (ret < 0) {
+                        if ((errno == EAGAIN) || (errno == EWOULDBLOCK)) {
+                            break;
+                        }
+                        ERROR_EXIT("read data section from client error!");
+                    }
+
+                    cout<<m_buffer;
+                    ret = write(clientfd, m_buffer, strlen(m_buffer));
+                    if (ret == -1) {
+                        ERROR_EXIT("write data section to client error!");
+                    }
+                }
+
             }
         }
     }
