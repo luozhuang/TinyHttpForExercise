@@ -4,6 +4,7 @@
 #include <sys/types.h>
 #include <arpa/inet.h>
 #include <sys/socket.h>
+#include <poll.h>
 #include <iostream>
 #include <vector>
 #include <cstdlib>
@@ -19,6 +20,14 @@ using namespace std;
         perror(x); \
         exit(EXIT_FAILURE); \
     } while(0) \
+
+enum MULSTYLE
+{
+    MULTIP_SELECT,
+    MULTIP_POLL,
+    MULTIP_EPOLL,
+    MULTIP_MAXS
+};
 
 class HttpServer
 {
@@ -37,21 +46,24 @@ public:
     void Echo_Select();
     void Echo_Poll();
     void Echo_Epoll();
-    void Echo(int client);
+
+    void Echo(int client, int flag);
     void RemoveValue(int& index, vector<int>& client);
+    void FdCloseProcess(int fd, int flag);
 private:
     int m_listenfd;
     char m_buffer[BUFSIZE];
 
-    //select for echo implement
-    //fd_set m_readfds;
-    struct SelectData
+    //echo implement in select
+    typedef struct SelectData
     {
         vector<int> client_fds;
         int maxfd_index;
         fd_set  readfds, readyfds;
-    };
-
+    } SelectData;
     SelectData m_fdsetdata;
+
+    //echo implement for poll
+    vector<pollfd> event_queue;
 };
 #endif

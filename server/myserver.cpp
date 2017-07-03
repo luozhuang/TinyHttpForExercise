@@ -33,14 +33,16 @@ void HttpServer::Start(int port)
     cout<<"server listing..."<<endl;
 
     //1.
-    Echo_Select();
+    //Echo_Select();
     //2.
-    //
+    Echo_Poll();
     //3.
+    //Echo_Epoll();
 }
 
 void HttpServer::Echo_Select()
 {
+    cout<<"select implement..."<<endl;
     struct sockaddr_in client_addr;
     socklen_t clientaddr_len = sizeof(struct sockaddr_in);
 
@@ -73,7 +75,7 @@ void HttpServer::Echo_Select()
                     m_fdsetdata.maxfd_index = m_fdsetdata.client_fds[m_fdsetdata.maxfd_index] > clientfd ? m_fdsetdata.maxfd_index:(m_fdsetdata.client_fds.size() - 1);
                     FD_SET(clientfd, &m_fdsetdata.readfds);
                 } else if (FD_ISSET(m_fdsetdata.client_fds[i], &m_fdsetdata.readyfds)){
-                    Echo(m_fdsetdata.client_fds[i]);
+                    Echo(m_fdsetdata.client_fds[i], MULTIP_SELECT);
                 }
             }
         }
@@ -82,15 +84,72 @@ void HttpServer::Echo_Select()
 
 void HttpServer::Echo_Poll()
 {
+    cout<<"poll implement..."<<endl;
+    struct sockaddr_in client_addr;
+    socklen_t addr_len = sizeof(struct sockaddr_in);
 
+    struct pollfd  poll_ev;
+    // vector<pollfd> event_queue;
+    poll_ev.fd = m_listenfd;
+    poll_ev.events = POLLIN;
+    event_queue.push_back(poll_ev);
+
+    while (1) {
+        int ready_count = poll((struct pollfd*)(event_queue.data()), event_queue.size(),  -1);
+        if (ready_count < 0) {
+            ERROR_EXIT("poll ready events failure!");
+        } else if (ready_count > 0) {
+            int event_size = event_queue.size();
+            for (int i = 0; i < event_size; ++i) {
+                if (event_queue[i].revents & POLLIN) {
+                    if (event_queue[i].fd == m_listenfd) {
+                        int clientfd = accept(m_listenfd, (struct sockaddr*)(&client_addr), &addr_len);
+                        if (clientfd < 0) {
+                            ERROR_EXIT("receive connection from client failure!");
+                        }
+                        cout<<clientfd<<" connect to client success!"<<endl;
+                        poll_ev.fd = clientfd;
+                        poll_ev.events = POLLIN;
+                        event_queue.push_back(poll_ev);
+                    } else {
+                        Echo(event_queue[i].fd, MULTIP_POLL);
+                    }
+                }
+            }
+        }
+    }
 }
 
 void HttpServer::Echo_Epoll()
 {
 
+    cout<<"epoll implement";
 }
 
-void HttpServer::Echo(int clientfd)
+void HttpServer::FdCloseProcess(int fd, int flag)
+{
+    switch(flag) {
+        case MULTIP_SELECT: {
+                                FD_CLR(fd, &m_fdsetdata.readfds);
+                                RemoveValue(m_fdsetdata.maxfd_index, m_fdsetdata.client_fds);
+                                break;
+                            }
+        case MULTIP_POLL: {
+                              for (int i = 0; i < event_queue.size(); ++i) {
+                                  if (event_queue[i].fd == fd) {
+                                      event_queue.erase(event_queue.begin() + i);
+                                  }
+                              }
+                              break;
+                          }
+        case MULTIP_EPOLL: {
+
+                           }
+        default:break;
+    }
+    close(fd);
+}
+void HttpServer::Echo(int clientfd, int flag)
 {
     memset(m_buffer, 0, BUFSIZE);
 
@@ -98,9 +157,11 @@ void HttpServer::Echo(int clientfd)
     if (ret != -1) {
         if (ret == 0) {
             cout<<"client disconnect!"<<endl;
-            FD_CLR(clientfd, &m_fdsetdata.readfds);
-            RemoveValue(m_fdsetdata.maxfd_index, m_fdsetdata.client_fds);
-            close(clientfd);
+            //FD_CLR(clientfd, &m_fdsetdata.readfds);
+            //RemoveValue(m_fdsetdata.maxfd_index, m_fdsetdata.client_fds);
+
+            FdCloseProcess(clientfd, flag);
+            //close(clientfd);
         } else {
             cout<<m_buffer;
             ret = write(clientfd, m_buffer, strlen(m_buffer));
