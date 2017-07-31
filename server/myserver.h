@@ -8,16 +8,12 @@
 #include <cstdlib>
 #include <cstdio>
 #include <cstring>
+#include "global.h"
 using namespace std;
-#define DEFU_SERPORT 30023
-#define DEFU_BACKLOG 5
-#define BUFSIZE 1024
 
-#define ERROR_EXIT(x) \
-    do { \
-        perror(x); \
-        exit(EXIT_FAILURE); \
-    } while(0) \
+#define DEF_SERPORT 30023
+#define DEF_BACKLOG 5
+#define BUFSIZE 1024
 
 class HttpServer
 {
@@ -30,9 +26,15 @@ public:
     {
 
     }
-    void Start(int port = DEFU_SERPORT);
+
+    void SignalHandler(int sig);
+    void RegSignaler(int sig, void(*handler)(int), bool restart = true);
+    void SetupSignaler();
+
+    void Start(int port = DEF_SERPORT);
 private:
-    int m_socketfd;
+    int m_lisentfd;
     char m_buffer[BUFSIZE];
+    int m_sigfd[2];
 };
 #endif
