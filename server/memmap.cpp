@@ -17,7 +17,7 @@ Memorymap::~Memorymap()
     }
 }
 
-char* Memorymap::MapMemory(size_t len, int flags, mode_t mode)
+void Memorymap::MapMemory(size_t len, int flags, mode_t mode)
 {
     m_len = len;
     int shm_fd = shm_open(m_shmname, flags, mode);
@@ -31,9 +31,9 @@ char* Memorymap::MapMemory(size_t len, int flags, mode_t mode)
     }
 
     close(shm_fd);
-    return m_addr;
 }
-char* Memorymap::MapFile(const char* filename, int flags, mode_t mode)
+
+void Memorymap::MapFile(const char* filename, int flags, mode_t mode)
 {
     int fd = open(filename, flags, mode);
     if (fd < 0) {
@@ -53,7 +53,6 @@ char* Memorymap::MapFile(const char* filename, int flags, mode_t mode)
         ERROR_HANDLE("map file failure!");
     }
     close(fd);
-    return m_addr;
 }
 
 void Memorymap::UnmapMemory()

@@ -21,9 +21,9 @@ public:
 
     ~Memorymap();
 
-    char* MapFile(const char* filename, int flags, mode_t mode);
+    void MapFile(const char* filename, int flags, mode_t mode);
 
-    char* MapMemory(size_t len, int flags, mode_t mode);
+    void MapMemory(size_t len, int flags, mode_t mode);
     void UnmapMemory();
 
 private:

@@ -45,13 +45,13 @@ void HttpClient::Connect(const char *addr, int remote_port)
             break;
         }
 
-        ret = write(m_socketfd, m_buffer, BUFSIZE);
+        ret = send(m_socketfd, m_buffer, strlen(m_buffer), 0);
         if (ret == -1) {
             perror("send data section to server error!");
             exit(EXIT_FAILURE);
         } else {
             memset(m_buffer, 0, BUFSIZE);
-            ret = read(m_socketfd, m_buffer, BUFSIZE);
+            ret = recv(m_socketfd, m_buffer, BUFSIZE, 0);
             if (ret == -1) {
                 perror("receive data from server error!");
                 exit(EXIT_FAILURE);

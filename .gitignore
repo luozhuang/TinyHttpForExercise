@@ -1,4 +1,8 @@
 *.o
 *.a
 *.so
+server/test.cpp
+server/daemonize.h
+client/client
+bin/
 
